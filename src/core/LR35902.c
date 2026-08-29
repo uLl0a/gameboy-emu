@@ -44,7 +44,7 @@ void _jr(_s8 nn,_u8 cc,_u16 length , int cycles){
     }
 
 jump:
-    cpu.regs.pc.reg += nn;
+    cpu.regs.pc.reg = (_u16)((_s16)cpu.regs.pc.reg + (_s16)length + (_s16)nn);
     goto end;
 not_taken:
     cpu.regs.pc.reg += length;
@@ -136,7 +136,7 @@ void _call(_u16 nn,_s8 cc,_u16 length, int cycles){
     }
 
 call:
-    _push(cpu.regs.pc.reg,0, cycles / 2);
+    _push((cpu.regs.pc.reg + length), 0, cycles / 2);
     cpu.regs.pc.reg = nn;
     goto end;
 not_taken:
@@ -147,7 +147,7 @@ end:
 }
 
 void _ret(_s8 cc,_u16 length, int cycles){
-    cpu.cycles = cycles / 2;
+    cpu.cycles += cycles;
     if(cc == 0)
         goto ret;
 
@@ -198,6 +198,8 @@ void _xor(_u8 *n,_u16 length, int cycles){
     cpu.regs.af.hi = (*n ^ cpu.regs.af.hi);
     if(cpu.regs.af.hi == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
     }
     _CPU_RESET_BIT(CPU_FLAG_N);
     _CPU_RESET_BIT(CPU_FLAG_H);
@@ -210,6 +212,8 @@ void _or(_u8 *n,_u16 length, int cycles){
     cpu.regs.af.hi = (*n | cpu.regs.af.hi);
     if(cpu.regs.af.hi == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
     }
     _CPU_RESET_BIT(CPU_FLAG_N);
     _CPU_RESET_BIT(CPU_FLAG_H);
@@ -222,6 +226,8 @@ void _and(_u8 *n,_u16 length, int cycles){
     cpu.regs.af.hi = (*n & cpu.regs.af.hi);
     if(cpu.regs.af.hi == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
     }
     _CPU_RESET_BIT(CPU_FLAG_N);
     _CPU_SET_BIT(CPU_FLAG_H);
@@ -232,16 +238,24 @@ void _and(_u8 *n,_u16 length, int cycles){
 void _cp(_u8 n,_u16 length, int cycles){
     cpu.cycles += cycles;
 
-    if((cpu.regs.af.hi - n) == 0)
+    _u8 result = cpu.regs.af.hi - n;
+    if(result == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
+    }
 
     _CPU_SET_BIT(CPU_FLAG_N);
 
     if(_8BIT_HALF_BORROW(cpu.regs.af.hi, n)){
         _CPU_SET_BIT(CPU_FLAG_H);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_H);
     }
 
     if(cpu.regs.af.hi < n){
+        _CPU_SET_BIT(CPU_FLAG_C);
+    } else {
         _CPU_RESET_BIT(CPU_FLAG_C);
     }
     cpu.regs.pc.reg += length;
@@ -269,13 +283,19 @@ void _8bit_dec(_u8 *n,_u16 length, int cycles){
     cpu.cycles += cycles;
     _u8 before = *n;
     *n -= 1;
-    if(*n == 0)
+    if(*n == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
+    }
 
     _CPU_SET_BIT(CPU_FLAG_N);
 
-    if(_8BIT_HALF_BORROW(before, 1))
+    if(_8BIT_HALF_BORROW(before, 1)){
         _CPU_SET_BIT(CPU_FLAG_H);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_H);
+    }
 
     cpu.regs.pc.reg += length;
 }
@@ -284,13 +304,19 @@ void _8bit_inc(_u8 *n,_u16 length, int cycles){
     cpu.cycles += cycles;
     _u8 before = *n;
     *n += 1;
-    if(*n == 0)
+    if(*n == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
+    }
 
     _CPU_RESET_BIT(CPU_FLAG_N);
 
-    if(_8BIT_HALF_CARRY(before, 1))
+    if(_8BIT_HALF_CARRY(before, 1)){
         _CPU_SET_BIT(CPU_FLAG_H);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_H);
+    }
 
     cpu.regs.pc.reg += length;
 }
@@ -331,8 +357,8 @@ void _8bit_memory_dec(_u16 address,_u16 length, int cycles){
 }
 
 void _push(_u16 value, _u16 length, int cycles){
-    _16bit_bus_write(cpu.regs.sp.reg, value);
     cpu.regs.sp.reg -= 2;
+    _16bit_bus_write(cpu.regs.sp.reg, value);
     cpu.regs.pc.reg += length;
     cpu.cycles += cycles;
 }
@@ -350,14 +376,20 @@ void _8bit_add(_u8 *A, _u8 n,_u16 length, int cycles){
     *A += n;
     if(*A == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
     }
     _CPU_RESET_BIT(CPU_FLAG_N);
     if(_8BIT_HALF_CARRY(before, n)){
         _CPU_SET_BIT(CPU_FLAG_H);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_H);
     }
 
     if(_8BIT_CARRY(before,n)){
         _CPU_SET_BIT(CPU_FLAG_C);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_C);
     }
     cpu.regs.pc.reg += length;
     cpu.cycles += cycles;
@@ -383,14 +415,20 @@ void _8bit_sub(_u8 *A, _u8 n,_u16 length, int cycles){
     *A -= n;
     if(*A == 0){
         _CPU_SET_BIT(CPU_FLAG_Z);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_Z);
     }
     _CPU_SET_BIT(CPU_FLAG_N);
     
     if(_8BIT_HALF_BORROW(before, n)){
         _CPU_SET_BIT(CPU_FLAG_H);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_H);
     }
     if(_8BIT_BORROW(before, n)){
         _CPU_SET_BIT(CPU_FLAG_C);
+    } else {
+        _CPU_RESET_BIT(CPU_FLAG_C);
     }
     cpu.regs.pc.reg += length;
     cpu.cycles += cycles;
@@ -441,7 +479,7 @@ void _ei(){
 }
 
 void _rst(_u8 value){
-    _push(cpu.regs.pc.reg, 0, 0);
+    _push((cpu.regs.pc.reg + 1U), 0, 0);
     cpu.cycles += 16;
     cpu.regs.pc.reg = value;
 }

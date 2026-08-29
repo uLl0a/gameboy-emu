@@ -8,6 +8,7 @@ typedef unsigned char _u8;
 typedef char _s8;
 typedef unsigned short _u16;
 typedef short _s16;
+typedef unsigned int _u32;
 
 #define CLOCK_SPEED 4194304 
 #define MAX_CICLES (CLOCK_SPEED / FRAME_PER_SECOND)

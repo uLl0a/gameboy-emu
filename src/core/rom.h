@@ -27,9 +27,18 @@ typedef struct {
 struct Cartridge_context_t{
     _s8 filename[1024];
     size_t rom_size;
+    _u8 bios[0x100];
+    bool bios_active;
+    bool boot_handoff_logged;
     _u8 game_bank[0x200000];
     _u8 rom_data[0x100000];
     _u8 ram_banks[MAX_RAM_BANKS];
+    _u8 vram[0x2000];
+    _u8 wram[0x2000];
+    _u8 oam[0xA0];
+    _u8 io[0x80];
+    _u8 hram[0x80];
+    _u8 ie;
     _u8 current_rom_bank;
     _u8 current_ram_bank;
     Cartridge_header_t *header;
@@ -46,6 +55,8 @@ void write_ram_banks(_u16 address, _u8 value);
 _u8 *read_game_bank(_u16 address);
 void write_game_bank(_u16 address, _u8 value);
 
+void load_bios(void);
+void load_bios_from_path(const _s8 filename[1024]);
 void load_rom(const _s8 filename[256]);
 void unload_rom(void);
 
